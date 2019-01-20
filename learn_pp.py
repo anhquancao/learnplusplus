@@ -1,0 +1,141 @@
+from sklearn.tree import DecisionTreeClassifier
+from skmultiflow.utils import check_random_state
+import copy
+import numpy as np
+import random
+import pandas as pd
+import math
+
+
+class LearnPP:
+
+    def __init__(self, base_estimator=DecisionTreeClassifier(), n_estimators=10, random_state=None):
+        self.base_estimator = base_estimator
+        self.n_estimators = n_estimators
+        self.random = random
+        self.random.seed(random_state)
+        self.ensembles = []
+        self.ensemble_weights = []
+        self.classes = None
+
+    def partial_fit(self, X, y=None, classes=None):
+        if self.classes is None:
+            if classes is None:
+                raise ValueError("Should pass the classes in the first partial_fit call")
+            else:
+                self.classes = classes
+
+        if classes is not None and self.classes is not None:
+            if set(classes) == set(self.classes):
+                pass
+            else:
+                raise ValueError("The values of classes are different")
+
+        ensemble = [copy.deepcopy(self.base_estimator) for _ in range(self.n_estimators)]
+        normalized_errors = [1.0 for _ in range(self.n_estimators)]
+
+        m = len(X)
+        X = np.array(X)
+        y = np.array(y)
+
+        # init the weights
+        weights = np.ones((self.n_estimators, m)) / m
+        items_index = np.linspace(0, m - 1, m)
+        t = 0
+        while t < self.n_estimators:
+            # print("Estimator", t)
+
+            # Set distribution Dt
+            Dt = weights[t] / (np.sum(weights[t]) + 1e-30)
+
+            total_error = 1.0
+            while total_error >= 0.5:
+
+                # create training and testing subsets according to Dt
+                train_size = int(math.ceil(m / 2))
+                test_size = int(math.ceil(m / 2))
+                train_items_index = self.get_item(items_index, Dt, train_size)
+                test_items_index = self.get_item(items_index, Dt, test_size)
+
+                X_train = X[train_items_index]
+                y_train = y[train_items_index]
+
+                X_test = X[test_items_index]
+                y_test = y[test_items_index]
+
+                # Train a weak learner
+                ensemble[t] = copy.deepcopy(self.base_estimator)
+                ensemble[t].fit(X_train, y_train)
+
+                # predict on the test data
+                # X_comb = np.concatenate((X_train, X_test))
+                # y_comb = np.concatenate((y_train, y_test))
+                #
+                # y_predict = self.ensemble[t].predict(X_comb)
+                # Dt_comb = np.concatenate((Dt[train_items_index], Dt[test_items_index]))
+                #
+                # # a = np.sum(y_predict == y_comb) / len(y_comb)
+                # total_error = self.compute_error(Dt_comb, y_comb, y_predict)
+
+                y_predict = ensemble[t].predict(X_test)
+                Dt_test = Dt[test_items_index]
+                total_error = self.compute_error(Dt_test, y_test, y_predict)
+
+                if total_error < 0.5:
+                    # print("Error < 0.5", total_error)
+                    norm_error = total_error / (1 - total_error)
+                    normalized_errors[t] = norm_error
+
+                    # predict using all hypothesis in the ensemble with majority votes
+                    y_predict_composite = self.majority_vote(X, t + 1, ensemble, normalized_errors)
+
+                    total_error = self.compute_error(Dt, y, y_predict_composite)
+                    if total_error < 0.5:
+                        normalize_composite_error = total_error / (1 - total_error + 1e-30)
+                        if t < self.n_estimators - 1:
+                            weights[t + 1] = weights[t]
+                            weights[t + 1][y_predict_composite == y] = weights[t][
+                                                                           y_predict_composite == y] * normalize_composite_error
+                # print(total_error)
+
+            t += 1
+        self.ensembles.append(ensemble)
+        self.ensemble_weights.append(normalized_errors)
+
+        return self
+
+    def compute_error(self, Dt, y_true, y_predict):
+        errors = Dt
+        total_weight = np.sum(errors)
+        errors[y_predict == y_true] = 0.0
+        total_error = np.sum(errors) / (total_weight + 1e-30)
+        return total_error
+
+    def vote_proba(self, X, t, ensemble, normalized_errors):
+        res = []
+        for m in range(len(X)):
+            votes = np.zeros(len(self.classes))
+            for i in range(t):
+                h = ensemble[i]
+
+                y_predicts = h.predict(X[m].reshape(1, -1))
+                norm_error = normalized_errors[i] + 1e-30
+                votes[int(y_predicts[0])] += np.log(1 / norm_error)
+
+            res.append(votes)
+        return res
+
+    def majority_vote(self, X, t, ensemble, normalized_errors):
+        res = self.vote_proba(X, t, ensemble, normalized_errors)
+        return np.argmax(res, axis=1)
+
+    def predict(self, X):
+        votes = np.zeros((len(X), len(self.classes)))
+        for i in range(len(self.ensembles)):
+            ensemble = self.ensembles[i]
+            ensemble_weight = self.ensemble_weights[i]
+            votes += np.array(self.vote_proba(X, self.n_estimators, ensemble, ensemble_weight))
+        return np.argmax(votes, axis=1)
+
+    def get_item(self, items, items_weights, number_of_items):
+        return [int(self.random.choices(items, weights=items_weights)[0]) for _ in range(number_of_items)]
