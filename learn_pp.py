@@ -9,12 +9,13 @@ import math
 
 class LearnPP:
 
-    def __init__(self, base_estimator=DecisionTreeClassifier(), n_estimators=10, random_state=None):
+    def __init__(self, base_estimator=DecisionTreeClassifier(), n_estimators=10, n_ensembles=10, random_state=None):
         self.base_estimator = base_estimator
         self.n_estimators = n_estimators
         self.ensembles = []
         self.ensemble_weights = []
         self.classes = None
+        self.n_ensembles = n_ensembles
         self.random = check_random_state(random_state)
 
     def partial_fit(self, X, y=None, classes=None):
@@ -94,6 +95,10 @@ class LearnPP:
 
         self.ensembles.append(ensemble)
         self.ensemble_weights.append(normalized_errors)
+
+        if len(self.ensembles) > self.n_ensembles:
+            self.ensembles.pop(0)
+            self.ensemble_weights.pop(0)
 
         return self
 

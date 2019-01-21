@@ -69,23 +69,23 @@ for i in range(n_subsets):
 """
 ========================
 Subset 0
-Avg Training acc: 0.7881666666666666
-Test Avg 0.7030864197530863
-Subset 0 COMBINE Training acc 0.905
-COMBINE Test acc 0.7870370370370371
+Avg Training acc: 0.7886666666666665
+Test Avg 0.7141975308641976
+Subset 0 COMBINE Training acc 0.915
+COMBINE Test acc 0.8194444444444444
 ========================
 Subset 1
-Avg Training acc: 0.8171666666666665
-Test Avg 0.7276234567901233
-Subset 0 COMBINE Training acc 0.855
-Subset 1 COMBINE Training acc 0.855
-COMBINE Test acc 0.7916666666666666
+Avg Training acc: 0.8509999999999999
+Test Avg 0.7132716049382715
+Subset 0 COMBINE Training acc 0.795
+Subset 1 COMBINE Training acc 0.895
+COMBINE Test acc 0.7731481481481481
 ========================
 Subset 2
-Avg Training acc: 0.8146666666666669
-Test Avg 0.7266975308641974
-Subset 0 COMBINE Training acc 0.82
-Subset 1 COMBINE Training acc 0.825
-Subset 2 COMBINE Training acc 0.845
+Avg Training acc: 0.7635000000000001
+Test Avg 0.7012345679012345
+Subset 0 COMBINE Training acc 0.775
+Subset 1 COMBINE Training acc 0.905
+Subset 2 COMBINE Training acc 0.775
 COMBINE Test acc 0.8148148148148148
 """
