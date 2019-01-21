@@ -1,4 +1,5 @@
 import pandas as pd
+from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
 
 from learn_pp import LearnPP
@@ -25,8 +26,8 @@ n_subsets = 3
 X_test = X[n_subsets * m:]
 y_test = y[n_subsets * m:]
 
-base_learner = DecisionTreeClassifier(max_depth=3)
-clf = LearnPP(base_learner, n_estimators=30, random_state=5)
+base_learner = MLPClassifier(hidden_layer_sizes=(100,), tol=0.0001, max_iter=500)
+clf = LearnPP(base_learner, n_estimators=30)
 
 classes = [0, 1, 2, 3]
 
@@ -44,8 +45,14 @@ for i in range(n_subsets):
 
     for j in range(i + 1):
 
-        X_t = X[j * m: (j + 1) * m]
-        y_t = y[j * m: (j + 1) * m]
+        s_i = j * m
+        e_i = (j + 1) * m
+
+        X_t = X[s_i: e_i]
+        y_t = y[s_i: e_i]
+
+        print(s_i, e_i)
+
         y_predict = clf.predict(X_t)
         print("j", j, "COMBINE Training acc", acc(y_t, y_predict))
 
@@ -62,8 +69,9 @@ for i in range(n_subsets):
 
                 count += 1
 
+        print("Number of estimator", count)
+
         print("Training Avg", total_acc / count)
         print("Test Avg", total_acc_test / count)
-        print("")
 
     print("COMBINE Test acc", acc(y_test, clf.predict(X_test)))

@@ -9,14 +9,13 @@ import math
 
 class LearnPP:
 
-    def __init__(self, base_estimator=DecisionTreeClassifier(), n_estimators=10, random_state=None):
+    def __init__(self, base_estimator=DecisionTreeClassifier(), n_estimators=10):
         self.base_estimator = base_estimator
         self.n_estimators = n_estimators
-        self.random = random
-        self.random.seed(random_state)
         self.ensembles = []
         self.ensemble_weights = []
         self.classes = None
+        self.total_acc = 0
 
     def partial_fit(self, X, y=None, classes=None):
         if self.classes is None:
@@ -33,33 +32,31 @@ class LearnPP:
 
         ensemble = [copy.deepcopy(self.base_estimator) for _ in range(self.n_estimators)]
         normalized_errors = [1.0 for _ in range(self.n_estimators)]
+        self.total_acc = 0
 
         m = len(X)
         X = np.array(X)
         y = np.array(y)
 
-        # init the weights
-        weights = np.ones((self.n_estimators, m)) / m
         items_index = np.linspace(0, m - 1, m)
         t = 0
         while t < self.n_estimators:
             # print("Estimator", t)
 
             # Set distribution Dt
-            Dt = weights[t] / (np.sum(weights[t]) + 1e-30)
+            Dt = np.ones((m,)) / m
 
             total_error = 1.0
             while total_error >= 0.5:
 
                 # create training and testing subsets according to Dt
-                train_size = int(math.ceil(m / 2))
-                test_size = int(math.ceil(m / 2))
+                train_size = int(m / 2)
+                test_size = int(m / 2)
                 train_items_index = self.get_item(items_index, Dt, train_size)
                 test_items_index = self.get_item(items_index, Dt, test_size)
 
                 X_train = X[train_items_index]
                 y_train = y[train_items_index]
-
                 X_test = X[test_items_index]
                 y_test = y[test_items_index]
 
@@ -67,20 +64,12 @@ class LearnPP:
                 ensemble[t] = copy.deepcopy(self.base_estimator)
                 ensemble[t].fit(X_train, y_train)
 
-                # predict on the test data
-                # X_comb = np.concatenate((X_train, X_test))
-                # y_comb = np.concatenate((y_train, y_test))
-                #
-                # y_predict = self.ensemble[t].predict(X_comb)
-                # Dt_comb = np.concatenate((Dt[train_items_index], Dt[test_items_index]))
-                #
-                # # a = np.sum(y_predict == y_comb) / len(y_comb)
-                # total_error = self.compute_error(Dt_comb, y_comb, y_predict)
-
+                # predict on the data
                 y_predict = ensemble[t].predict(X_test)
-                Dt_test = Dt[test_items_index]
-                total_error = self.compute_error(Dt_test, y_test, y_predict)
 
+                total_error = self.compute_error(Dt[test_items_index], y_test, y_predict)
+
+                # print("Error 1" , total_error)
                 if total_error < 0.5:
                     # print("Error < 0.5", total_error)
                     norm_error = total_error / (1 - total_error)
@@ -91,24 +80,24 @@ class LearnPP:
 
                     total_error = self.compute_error(Dt, y, y_predict_composite)
                     if total_error < 0.5:
-                        normalize_composite_error = total_error / (1 - total_error + 1e-30)
-                        if t < self.n_estimators - 1:
-                            weights[t + 1] = weights[t]
-                            weights[t + 1][y_predict_composite == y] = weights[t][
-                                                                           y_predict_composite == y] * normalize_composite_error
-                # print(total_error)
+                        y_train_pred = ensemble[t].predict(X_train)
+                        acc = np.sum(y_train_pred == y_train) / len(y_train)
+                        self.total_acc += acc
 
+                        normalize_composite_error = total_error / (1 - total_error)
+                        if t < self.n_estimators - 1:
+                            Dt[y_predict_composite == y] = Dt[y_predict_composite == y] * normalize_composite_error
+
+                # print("Error 2", total_error)
             t += 1
+
         self.ensembles.append(ensemble)
         self.ensemble_weights.append(normalized_errors)
 
         return self
 
     def compute_error(self, Dt, y_true, y_predict):
-        errors = Dt
-        total_weight = np.sum(errors)
-        errors[y_predict == y_true] = 0.0
-        total_error = np.sum(errors) / (total_weight + 1e-30)
+        total_error = np.sum(Dt[y_predict != y_true]) / np.sum(Dt)
         return total_error
 
     def vote_proba(self, X, t, ensemble, normalized_errors):
@@ -119,7 +108,7 @@ class LearnPP:
                 h = ensemble[i]
 
                 y_predicts = h.predict(X[m].reshape(1, -1))
-                norm_error = normalized_errors[i] + 1e-30
+                norm_error = normalized_errors[i]
                 votes[int(y_predicts[0])] += np.log(1 / norm_error)
 
             res.append(votes)
@@ -138,4 +127,4 @@ class LearnPP:
         return np.argmax(votes, axis=1)
 
     def get_item(self, items, items_weights, number_of_items):
-        return [int(self.random.choices(items, weights=items_weights)[0]) for _ in range(number_of_items)]
+        return np.random.choice(items, number_of_items, p=items_weights).astype(np.int32)
