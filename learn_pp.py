@@ -9,13 +9,13 @@ import math
 
 class LearnPP:
 
-    def __init__(self, base_estimator=DecisionTreeClassifier(), n_estimators=10):
+    def __init__(self, base_estimator=DecisionTreeClassifier(), n_estimators=10, random_state=None):
         self.base_estimator = base_estimator
         self.n_estimators = n_estimators
         self.ensembles = []
         self.ensemble_weights = []
         self.classes = None
-        self.total_acc = 0
+        self.random = check_random_state(random_state)
 
     def partial_fit(self, X, y=None, classes=None):
         if self.classes is None:
@@ -32,7 +32,6 @@ class LearnPP:
 
         ensemble = [copy.deepcopy(self.base_estimator) for _ in range(self.n_estimators)]
         normalized_errors = [1.0 for _ in range(self.n_estimators)]
-        self.total_acc = 0
 
         m = len(X)
         X = np.array(X)
@@ -41,7 +40,7 @@ class LearnPP:
         items_index = np.linspace(0, m - 1, m)
         t = 0
         while t < self.n_estimators:
-            # print("Estimator", t)
+            print("Estimator", t)
 
             # Set distribution Dt
             Dt = np.ones((m,)) / m
@@ -80,10 +79,6 @@ class LearnPP:
 
                     total_error = self.compute_error(Dt, y, y_predict_composite)
                     if total_error < 0.5:
-                        y_train_pred = ensemble[t].predict(X_train)
-                        acc = np.sum(y_train_pred == y_train) / len(y_train)
-                        self.total_acc += acc
-
                         normalize_composite_error = total_error / (1 - total_error)
                         if t < self.n_estimators - 1:
                             Dt[y_predict_composite == y] = Dt[y_predict_composite == y] * normalize_composite_error
@@ -127,4 +122,4 @@ class LearnPP:
         return np.argmax(votes, axis=1)
 
     def get_item(self, items, items_weights, number_of_items):
-        return np.random.choice(items, number_of_items, p=items_weights).astype(np.int32)
+        return self.random.choice(items, number_of_items, p=items_weights).astype(np.int32)

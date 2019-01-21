@@ -26,8 +26,8 @@ n_subsets = 3
 X_test = X[n_subsets * m:]
 y_test = y[n_subsets * m:]
 
-base_learner = MLPClassifier(hidden_layer_sizes=(100,), tol=0.0001, max_iter=500)
-clf = LearnPP(base_learner, n_estimators=30)
+base_learner = DecisionTreeClassifier(max_depth=3)
+clf = LearnPP(base_learner, n_estimators=30, random_state=22)
 
 classes = [0, 1, 2, 3]
 
@@ -36,42 +36,54 @@ def acc(y, y_predict):
     return np.sum(y == y_predict) / len(y)
 
 
+
 for i in range(n_subsets):
     print("========================")
     print("Subset", i)
-    start = i * m
-    end = (i + 1) * m
+    start = i * 200
+    end = (i + 1) * 200
     clf.partial_fit(X[start:end], y[start:end], classes)
 
+    print("Avg Training acc:", clf.total_acc / 30)
+
+    total_acc = 0
+    total_acc_test = 0
+    count = 0
+    for h in clf.ensembles[i]:
+        y_test_pred = h.predict(X_test)
+        total_acc_test += acc(y_test, y_test_pred)
+
+    print("Test Avg", total_acc_test / 30)
+
     for j in range(i + 1):
-
-        s_i = j * m
-        e_i = (j + 1) * m
-
-        X_t = X[s_i: e_i]
-        y_t = y[s_i: e_i]
-
-        print(s_i, e_i)
-
+        X_t = X[j * 200: (j + 1) * 200]
+        y_t = y[j * 200: (j + 1) * 200]
         y_predict = clf.predict(X_t)
-        print("j", j, "COMBINE Training acc", acc(y_t, y_predict))
-
-        total_acc = 0
-        total_acc_test = 0
-        count = 0
-        for ensemble in clf.ensembles:
-            for h in ensemble:
-                y_pred = h.predict(X_t)
-                total_acc += acc(y_t, y_pred)
-
-                y_test_pred = h.predict(X_test)
-                total_acc_test += acc(y_test, y_test_pred)
-
-                count += 1
-
-        print("Number of estimator", count)
-
-        print("Training Avg", total_acc / count)
-        print("Test Avg", total_acc_test / count)
+        print("Subset", j, "COMBINE Training acc", acc(y_t, y_predict))
 
     print("COMBINE Test acc", acc(y_test, clf.predict(X_test)))
+
+
+"""
+========================
+Subset 0
+Avg Training acc: 1.0
+Test Avg 0.6915123456790123
+Subset 0 COMBINE Training acc 0.93
+COMBINE Test acc 0.7546296296296297
+========================
+Subset 1
+Avg Training acc: 1.0
+Test Avg 0.7358024691358024
+Subset 0 COMBINE Training acc 0.875
+Subset 1 COMBINE Training acc 0.855
+COMBINE Test acc 0.8240740740740741
+========================
+Subset 2
+Avg Training acc: 1.0
+Test Avg 0.7185185185185187
+Subset 0 COMBINE Training acc 0.855
+Subset 1 COMBINE Training acc 0.85
+Subset 2 COMBINE Training acc 0.855
+COMBINE Test acc 0.7870370370370371
+"""
