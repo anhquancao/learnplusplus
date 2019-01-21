@@ -26,7 +26,7 @@ n_subsets = 3
 X_test = X[n_subsets * m:]
 y_test = y[n_subsets * m:]
 
-base_learner = DecisionTreeClassifier(max_depth=3)
+base_learner = MLPClassifier(hidden_layer_sizes=(100,), tol=1e-3, max_iter=500)
 clf = LearnPP(base_learner, n_estimators=30, random_state=22)
 
 classes = [0, 1, 2, 3]
@@ -36,7 +36,6 @@ def acc(y, y_predict):
     return np.sum(y == y_predict) / len(y)
 
 
-
 for i in range(n_subsets):
     print("========================")
     print("Subset", i)
@@ -44,7 +43,11 @@ for i in range(n_subsets):
     end = (i + 1) * 200
     clf.partial_fit(X[start:end], y[start:end], classes)
 
-    print("Avg Training acc:", clf.total_acc / 30)
+    total_acc = 0
+    for h in clf.ensembles[i]:
+        y_pred = h.predict(X[start:end])
+        total_acc += acc(y[start:end], y_pred)
+    print("Avg Training acc:", total_acc / 30)
 
     total_acc = 0
     total_acc_test = 0
@@ -63,27 +66,26 @@ for i in range(n_subsets):
 
     print("COMBINE Test acc", acc(y_test, clf.predict(X_test)))
 
-
 """
 ========================
 Subset 0
-Avg Training acc: 1.0
-Test Avg 0.6915123456790123
-Subset 0 COMBINE Training acc 0.93
-COMBINE Test acc 0.7546296296296297
+Avg Training acc: 0.7881666666666666
+Test Avg 0.7030864197530863
+Subset 0 COMBINE Training acc 0.905
+COMBINE Test acc 0.7870370370370371
 ========================
 Subset 1
-Avg Training acc: 1.0
-Test Avg 0.7358024691358024
-Subset 0 COMBINE Training acc 0.875
+Avg Training acc: 0.8171666666666665
+Test Avg 0.7276234567901233
+Subset 0 COMBINE Training acc 0.855
 Subset 1 COMBINE Training acc 0.855
-COMBINE Test acc 0.8240740740740741
+COMBINE Test acc 0.7916666666666666
 ========================
 Subset 2
-Avg Training acc: 1.0
-Test Avg 0.7185185185185187
-Subset 0 COMBINE Training acc 0.855
-Subset 1 COMBINE Training acc 0.85
-Subset 2 COMBINE Training acc 0.855
-COMBINE Test acc 0.7870370370370371
+Avg Training acc: 0.8146666666666669
+Test Avg 0.7266975308641974
+Subset 0 COMBINE Training acc 0.82
+Subset 1 COMBINE Training acc 0.825
+Subset 2 COMBINE Training acc 0.845
+COMBINE Test acc 0.8148148148148148
 """

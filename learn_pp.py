@@ -41,6 +41,7 @@ class LearnPP:
         t = 0
         while t < self.n_estimators:
             print("Estimator", t)
+            patience = 0
 
             # Set distribution Dt
             Dt = np.ones((m,)) / m
@@ -84,6 +85,11 @@ class LearnPP:
                             Dt[y_predict_composite == y] = Dt[y_predict_composite == y] * normalize_composite_error
 
                 # print("Error 2", total_error)
+
+                if total_error > 0.5:
+                    patience += 1
+                if patience > 20:
+                    raise RuntimeError("Your base estimator is too weak")
             t += 1
 
         self.ensembles.append(ensemble)
