@@ -46,34 +46,33 @@ class LearnPP:
     Examples
     --------
     >>> # Imports
-    >>> from skmultiflow.meta.oza_bagging import OzaBagging
+    >>> import numpy as np
+    >>> from skmultiflow.meta.learn_pp import LearnPP
     >>> from skmultiflow.lazy.knn import KNN
     >>> from skmultiflow.data.sea_generator import SEAGenerator
     >>> # Setting up the stream
-    >>> stream = SEAGenerator(1, noise_percentage=6.7)
+    >>> stream = SEAGenerator(1)
     >>> stream.prepare_for_use()
-    >>> # Setting up the OzaBagging classifier to work with KNN classifiers
-    >>> clf = OzaBagging(base_estimator=KNN(n_neighbors=8, max_window_size=2000, leaf_size=30), n_estimators=2)
+    >>> # Setting up the Learn++ classifier to work with KNN classifiers
+    >>> clf = LearnPP(base_estimator=KNN(n_neighbors=8, max_window_size=2000, leaf_size=30), n_estimators=30)
     >>> # Keeping track of sample count and correct prediction count
     >>> sample_count = 0
     >>> corrects = 0
+    >>> m = 200
     >>> # Pre training the classifier with 200 samples
-    >>> X, y = stream.next_sample(200)
+    >>> X, y = stream.next_sample(m)
     >>> clf = clf.partial_fit(X, y, classes=stream.target_values)
-    >>> for i in range(2000):
-    ...     X, y = stream.next_sample()
+    >>> for i in range(10):
+    ...     X, y = stream.next_sample(m)
     ...     pred = clf.predict(X)
     ...     clf = clf.partial_fit(X, y)
     ...     if pred is not None:
-    ...         if y[0] == pred[0]:
-    ...             corrects += 1
-    ...     sample_count += 1
+    ...         corrects += np.sum(y == pred)
+    ...     sample_count += m
     >>>
     >>> # Displaying the results
-    >>> print(str(sample_count) + ' samples analyzed.')
-    2000 samples analyzed.
-    >>> print('OzaBagging classifier performance: ' + str(corrects / sample_count))
-    OzaBagging classifier performance: 0.9645
+    >>> print('Learn++ classifier performance: ' + str(corrects / sample_count))
+    Learn++ classifier performance: 0.9483333333333334
 
     """
 
@@ -143,7 +142,7 @@ class LearnPP:
         items_index = np.linspace(0, m - 1, m)
         t = 0
         while t < self.n_estimators:
-            print("Estimator", t)
+            print("Generate estimator", t)
             patience = 0
 
             # Set distribution Dt
@@ -151,6 +150,8 @@ class LearnPP:
 
             total_error = 1.0
             while total_error >= 0.5:
+
+                Dt = Dt / np.sum(Dt)
 
                 # create training and testing subsets according to Dt
                 train_size = int(m / 2)
@@ -217,7 +218,7 @@ class LearnPP:
 
                 y_predicts = h.predict(X[m].reshape(1, -1))
                 norm_error = normalized_errors[i]
-                votes[int(y_predicts[0])] += np.log(1 / norm_error)
+                votes[int(y_predicts[0])] += np.log(1 / (norm_error + 1e-50))
 
             res.append(votes)
         return res
