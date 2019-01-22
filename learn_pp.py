@@ -139,6 +139,8 @@ class LearnPP:
         X = np.array(X)
         y = np.array(y)
 
+        Dt = np.ones((m,)) / m
+
         items_index = np.linspace(0, m - 1, m)
         t = 0
         while t < self.n_estimators:
@@ -146,12 +148,10 @@ class LearnPP:
             patience = 0
 
             # Set distribution Dt
-            Dt = np.ones((m,)) / m
+            Dt = Dt / np.sum(Dt)
 
             total_error = 1.0
             while total_error >= 0.5:
-
-                Dt = Dt / np.sum(Dt)
 
                 # create training and testing subsets according to Dt
                 train_size = int(m / 2)
