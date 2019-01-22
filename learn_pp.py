@@ -62,7 +62,7 @@ class LearnPP:
     >>> # Pre training the classifier with 200 samples
     >>> X, y = stream.next_sample(m)
     >>> clf = clf.partial_fit(X, y, classes=stream.target_values)
-    >>> for i in range(10):
+    >>> for i in range(3):
     ...     X, y = stream.next_sample(m)
     ...     pred = clf.predict(X)
     ...     clf = clf.partial_fit(X, y)
@@ -72,7 +72,7 @@ class LearnPP:
     >>>
     >>> # Displaying the results
     >>> print('Learn++ classifier performance: ' + str(corrects / sample_count))
-    Learn++ classifier performance: 0.9483333333333334
+    Learn++ classifier performance: 0.9555
 
     """
 

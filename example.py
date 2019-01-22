@@ -21,12 +21,14 @@ X, y = stream.next_sample(m)
 clf = clf.partial_fit(X, y, classes=stream.target_values)
 
 
-for i in range(3):
+for i in range(10):
     X, y = stream.next_sample(m)
     pred = clf.predict(X)
     clf = clf.partial_fit(X, y)
     if pred is not None:
         corrects += np.sum(y == pred)
     sample_count += m
+
 # Displaying the results
 print('Learn++ classifier performance: ' + str(corrects / sample_count))
+# Learn++ classifier performance: 0.9555
