@@ -2,14 +2,82 @@ from sklearn.tree import DecisionTreeClassifier
 from skmultiflow.utils import check_random_state
 import copy
 import numpy as np
-import random
-import pandas as pd
-import math
 
 
 class LearnPP:
+    """ Learn++ Classifier
 
-    def __init__(self, base_estimator=DecisionTreeClassifier(), n_estimators=10, n_ensembles=10, random_state=None):
+    Learn++ is an ensemble learning method introduced by Robi Polikar,
+    Lalita Udpa, Satish S. Udpa and Vasant Honavar which is an algorithm
+    for incremental training of classifier. The algorithm does not require access to previously
+    used data during subsequent incremental learning sessions. At
+    the same time, it does not forget previously acquired knowledge.
+    Learn++ utilizes ensemble of classifiers by generating multiple
+    hypotheses using training data sampled according to carefully
+    tailored distributions
+
+    Parameters
+    ----------
+    base_estimator: StreamModel
+        This is the ensemble classifier type, each ensemble classifier is going
+        to be a copy of the base_estimator.
+
+    n_estimators: int (default=30)
+        The number of classifiers per ensemble
+
+    n_ensembles: int (default=10)
+        The number of ensembles to keep.
+
+    random_state: int, RandomState instance or None, optional (default=None)
+        If int, random_state is the seed used by the random number generator;
+        If RandomState instance, random_state is the random number generator;
+        If None, the random number generator is the RandomState instance used by `np.random`.
+
+    Raises
+    ------
+    RuntimeError:
+        A RuntimeError is raised if the base_estimator is too weak. In other word,
+        it has too low accuracy on the dataset.
+
+        A RuntimeError is raised if the 'classes' parameter is not
+        passed in the first partial_fit call, or if they are passed in further
+        calls but differ from the initial classes list passed.
+
+    Examples
+    --------
+    >>> # Imports
+    >>> from skmultiflow.meta.oza_bagging import OzaBagging
+    >>> from skmultiflow.lazy.knn import KNN
+    >>> from skmultiflow.data.sea_generator import SEAGenerator
+    >>> # Setting up the stream
+    >>> stream = SEAGenerator(1, noise_percentage=6.7)
+    >>> stream.prepare_for_use()
+    >>> # Setting up the OzaBagging classifier to work with KNN classifiers
+    >>> clf = OzaBagging(base_estimator=KNN(n_neighbors=8, max_window_size=2000, leaf_size=30), n_estimators=2)
+    >>> # Keeping track of sample count and correct prediction count
+    >>> sample_count = 0
+    >>> corrects = 0
+    >>> # Pre training the classifier with 200 samples
+    >>> X, y = stream.next_sample(200)
+    >>> clf = clf.partial_fit(X, y, classes=stream.target_values)
+    >>> for i in range(2000):
+    ...     X, y = stream.next_sample()
+    ...     pred = clf.predict(X)
+    ...     clf = clf.partial_fit(X, y)
+    ...     if pred is not None:
+    ...         if y[0] == pred[0]:
+    ...             corrects += 1
+    ...     sample_count += 1
+    >>>
+    >>> # Displaying the results
+    >>> print(str(sample_count) + ' samples analyzed.')
+    2000 samples analyzed.
+    >>> print('OzaBagging classifier performance: ' + str(corrects / sample_count))
+    OzaBagging classifier performance: 0.9645
+
+    """
+
+    def __init__(self, base_estimator=DecisionTreeClassifier(), n_estimators=30, n_ensembles=10, random_state=None):
         self.base_estimator = base_estimator
         self.n_estimators = n_estimators
         self.ensembles = []
@@ -19,9 +87,43 @@ class LearnPP:
         self.random = check_random_state(random_state)
 
     def partial_fit(self, X, y=None, classes=None):
+        """
+        partial_fit
+
+        Partially fits the model, based on the X and y matrix.
+
+
+        Parameters
+        ----------
+        X: Numpy.ndarray of shape (n_samples, n_features)
+            Features matrix used for partially updating the model.
+
+        y: Array-like
+            An array-like of all the class labels for the samples in X.
+
+        classes: list
+            List of all existing classes. This is an optional parameter, except
+            for the first partial_fit call, when it becomes obligatory.
+
+        Raises
+        ------
+            RuntimeError:
+                A RuntimeError is raised if the 'classes' parameter is not
+                passed in the first partial_fit call, or if they are passed in further
+                calls but differ from the initial classes list passed.
+
+                A RuntimeError is raised if the base_estimator is too weak. In other word,
+                it has too low accuracy on the dataset.
+
+        Returns
+        _______
+        LearnPP
+            self
+
+        """
         if self.classes is None:
             if classes is None:
-                raise ValueError("Should pass the classes in the first partial_fit call")
+                raise RuntimeError("Should pass the classes in the first partial_fit call")
             else:
                 self.classes = classes
 
@@ -29,7 +131,7 @@ class LearnPP:
             if set(classes) == set(self.classes):
                 pass
             else:
-                raise ValueError("The values of classes are different")
+                raise RuntimeError("The values of classes are different")
 
         ensemble = [copy.deepcopy(self.base_estimator) for _ in range(self.n_estimators)]
         normalized_errors = [1.0 for _ in range(self.n_estimators)]
@@ -125,6 +227,22 @@ class LearnPP:
         return np.argmax(res, axis=1)
 
     def predict(self, X):
+        """
+        predict
+
+        The predict function will use majority votes from all its learners
+        with their weights to find the most likely prediction for the sample matrix X.
+
+        Parameters
+        ----------
+        X: Numpy.ndarray of shape (n_samples, n_features)
+            A matrix of the samples we want to predict.
+
+        Returns
+        -------
+        numpy.ndarray
+            A numpy.ndarray with the label prediction for all the samples in X.
+        """
         votes = np.zeros((len(X), len(self.classes)))
         for i in range(len(self.ensembles)):
             ensemble = self.ensembles[i]
@@ -134,3 +252,13 @@ class LearnPP:
 
     def get_item(self, items, items_weights, number_of_items):
         return self.random.choice(items, number_of_items, p=items_weights).astype(np.int32)
+
+    def score(self, X, y):
+        raise NotImplementedError
+
+    def get_info(self):
+        return 'Learn++ Classifier: base_estimator: ' + str(self.base_estimator) + \
+               ' - n_estimators: ' + str(self.n_estimators) + " - n_ensembles: " + str(self.n_ensembles)
+
+    def fit(self, X, y, classes=None, weight=None):
+        raise NotImplementedError
