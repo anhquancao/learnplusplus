@@ -12,6 +12,8 @@ Fel LIANG
 Li XU
 
 ## Folder Structure**
+**Slide.pdf** Slide for presentation of this project
+
 **learn_pp.py** contains the learn++ implementation
 
 **optical_digits_database.py** experiment with the optical digit dataset
