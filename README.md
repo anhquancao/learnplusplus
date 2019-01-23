@@ -11,7 +11,7 @@ Fel LIANG
 
 Li XU
 
-## Folder Structure**
+## Folder Structure
 **Slide.pdf** Slide for presentation of this project
 
 **learn_pp.py** contains the learn++ implementation
