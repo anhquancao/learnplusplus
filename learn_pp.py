@@ -192,9 +192,12 @@ class LearnPP:
 
                 if total_error > 0.5:
                     patience += 1
-                if patience > 20:
+                else:
+                    patience = 0
+                if patience > 1000:
                     raise RuntimeError("Your base estimator is too weak")
             t += 1
+
 
         self.ensembles.append(ensemble)
         self.ensemble_weights.append(normalized_errors)
