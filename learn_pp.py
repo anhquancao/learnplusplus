@@ -198,7 +198,6 @@ class LearnPP:
                     raise RuntimeError("Your base estimator is too weak")
             t += 1
 
-
         self.ensembles.append(ensemble)
         self.ensemble_weights.append(normalized_errors)
 
